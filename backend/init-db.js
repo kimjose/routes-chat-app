@@ -6,7 +6,7 @@
  */
 
 require('dotenv').config();
-const { initializeUsersTable } = require('./src/database/init');
+const { initializeAllTables } = require('./src/database/init');
 const { pool } = require('./src/config/database');
 
 async function runInit() {
@@ -18,8 +18,8 @@ async function runInit() {
     console.log('Database connection successful');
     client.release();
     
-    // Initialize users table
-    await initializeUsersTable();
+    // Initialize all tables (users and roles)
+    await initializeAllTables();
     
     console.log('Database initialization completed successfully!');
     process.exit(0);

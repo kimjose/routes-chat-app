@@ -1,4 +1,5 @@
 const { query } = require('../config/database');
+const { initializeRolesTables } = require('./roles-init');
 
 const createUsersTable = async () => {
   const createTableQuery = `
@@ -86,9 +87,21 @@ const initializeUsersTable = async () => {
   }
 };
 
+const initializeAllTables = async () => {
+  try {
+    await initializeUsersTable();
+    await initializeRolesTables();
+    console.log('All database tables initialization completed');
+  } catch (error) {
+    console.error('Error initializing database tables:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   createUsersTable,
   createIndexes,
   createUpdatedAtTrigger,
-  initializeUsersTable
+  initializeUsersTable,
+  initializeAllTables
 };

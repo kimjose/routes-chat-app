@@ -39,7 +39,21 @@ class User {
         profile_picture_url
       ]);
 
-      return new User(result.rows[0]);
+      const newUser = new User(result.rows[0]);
+      
+      // Assign default 'user' role to new user
+      try {
+        const Role = require('./Role');
+        const defaultRole = await Role.findByName('user');
+        if (defaultRole) {
+          await newUser.assignRole(defaultRole.id);
+        }
+      } catch (roleError) {
+        console.warn('Could not assign default role to new user:', roleError.message);
+        // Don't fail user creation if role assignment fails
+      }
+
+      return newUser;
     } catch (error) {
       throw error;
     }
@@ -221,6 +235,90 @@ class User {
     } catch (error) {
       throw error;
     }
+  }
+
+  // Role management methods
+  
+  // Get user's roles
+  async getRoles(includeExpired = false) {
+    const UserRole = require('./UserRole');
+    return await UserRole.getUserRoles(this.id, includeExpired);
+  }
+
+  // Check if user has specific role
+  async hasRole(roleId) {
+    const UserRole = require('./UserRole');
+    return await UserRole.userHasRole(this.id, roleId);
+  }
+
+  // Check if user has specific role by name
+  async hasRoleName(roleName) {
+    const UserRole = require('./UserRole');
+    return await UserRole.userHasRoleName(this.id, roleName);
+  }
+
+  // Get user's permissions
+  async getPermissions() {
+    const UserRole = require('./UserRole');
+    return await UserRole.getUserPermissions(this.id);
+  }
+
+  // Check if user has specific permission
+  async hasPermission(permission) {
+    const UserRole = require('./UserRole');
+    return await UserRole.userHasPermission(this.id, permission);
+  }
+
+  // Assign role to user
+  async assignRole(roleId, assignedBy = null, expiresAt = null) {
+    const UserRole = require('./UserRole');
+    return await UserRole.assignRole(this.id, roleId, assignedBy, expiresAt);
+  }
+
+  // Remove role from user
+  async removeRole(roleId) {
+    const UserRole = require('./UserRole');
+    return await UserRole.removeRole(this.id, roleId);
+  }
+
+  // Assign multiple roles to user
+  async assignRoles(roleIds, assignedBy = null, expiresAt = null) {
+    const UserRole = require('./UserRole');
+    return await UserRole.assignMultipleRoles(this.id, roleIds, assignedBy, expiresAt);
+  }
+
+  // Remove all roles from user
+  async removeAllRoles() {
+    const UserRole = require('./UserRole');
+    return await UserRole.removeAllUserRoles(this.id);
+  }
+
+  // Check if user is admin
+  async isAdmin() {
+    return await this.hasRoleName('admin');
+  }
+
+  // Check if user is moderator
+  async isModerator() {
+    return await this.hasRoleName('moderator');
+  }
+
+  // Check if user can moderate (admin or moderator)
+  async canModerate() {
+    return await this.isAdmin() || await this.isModerator();
+  }
+
+  // Return user data without sensitive information, including roles
+  async toJSONWithRoles() {
+    const { password_hash, ...userWithoutPassword } = this;
+    const roles = await this.getRoles();
+    const permissions = await this.getPermissions();
+    
+    return {
+      ...userWithoutPassword,
+      roles,
+      permissions
+    };
   }
 
   // Return user data without sensitive information

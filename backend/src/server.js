@@ -9,7 +9,7 @@ require('dotenv').config();
 
 // Database configuration and initialization
 const { pool } = require('./config/database');
-const { initializeUsersTable } = require('./database/init');
+const { initializeAllTables } = require('./database/init');
 
 const app = express();
 const server = http.createServer(app);
@@ -41,10 +41,14 @@ app.use('/api/', limiter);
 const authRoutes = require('./routes/auth');
 const chatRoutes = require('./routes/chat');
 const routesRoutes = require('./routes/routes');
+const { router: rolesRoutes } = require('./routes/roles');
+const usersRoutes = require('./routes/users');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/routes', routesRoutes);
+app.use('/api/roles', rolesRoutes);
+app.use('/api/users', usersRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -105,7 +109,7 @@ const PORT = process.env.PORT || 5000;
 // Initialize database tables
 const initializeDatabase = async () => {
   try {
-    await initializeUsersTable();
+    await initializeAllTables();
     console.log('Database initialization completed');
   } catch (error) {
     console.error('Database initialization failed:', error);
