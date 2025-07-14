@@ -7,6 +7,10 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+// Database configuration and initialization
+const { pool } = require('./config/database');
+const { initializeUsersTable } = require('./database/init');
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -97,9 +101,47 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+
+// Initialize database tables
+const initializeDatabase = async () => {
+  try {
+    await initializeUsersTable();
+    console.log('Database initialization completed');
+  } catch (error) {
+    console.error('Database initialization failed:', error);
+    process.exit(1);
+  }
+};
+
+// Start server
+const startServer = async () => {
+  try {
+    await initializeDatabase();
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\nReceived SIGINT. Shutting down gracefully...');
+  
+  // Close database connections
+  await pool.end();
+  console.log('Database connections closed');
+  
+  // Close server
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });
+
+startServer();
 
 module.exports = { app, server, io };
 

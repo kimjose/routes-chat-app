@@ -1,15 +1,12 @@
 const express = require('express');
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 const router = express.Router();
-
-// Mock user storage (replace with database)
-const users = new Map();
 
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, first_name, last_name } = req.body;
 
     if (!username || !email || !password) {
       return res.status(400).json({
@@ -24,35 +21,33 @@ router.post('/register', async (req, res) => {
     }
 
     // Check if user already exists
-    const existingUser = Array.from(users.values()).find(
-      user => user.email === email || user.username === username
-    );
+    const existingUserByEmail = await User.findByEmail(email);
+    const existingUserByUsername = await User.findByUsername(username);
 
-    if (existingUser) {
+    if (existingUserByEmail) {
       return res.status(400).json({
-        error: 'User with this email or username already exists'
+        error: 'User with this email already exists'
       });
     }
 
-    // Hash password
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    if (existingUserByUsername) {
+      return res.status(400).json({
+        error: 'User with this username already exists'
+      });
+    }
 
     // Create user
-    const userId = `user_${Date.now()}`;
-    const newUser = {
-      id: userId,
+    const newUser = await User.create({
       username,
       email,
-      password: hashedPassword,
-      createdAt: new Date().toISOString()
-    };
-
-    users.set(userId, newUser);
+      password,
+      first_name,
+      last_name
+    });
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId, username, email },
+      { userId: newUser.id, username: newUser.username, email: newUser.email },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '24h' }
     );
@@ -61,15 +56,19 @@ router.post('/register', async (req, res) => {
       success: true,
       message: 'User registered successfully',
       token,
-      user: {
-        id: userId,
-        username,
-        email
-      }
+      user: newUser.toJSON()
     });
 
   } catch (error) {
     console.error('Registration error:', error.message);
+    
+    // Handle specific database errors
+    if (error.code === '23505') { // PostgreSQL unique violation
+      return res.status(400).json({
+        error: 'User with this email or username already exists'
+      });
+    }
+    
     res.status(500).json({
       error: 'Failed to register user'
     });
@@ -87,8 +86,8 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Find user
-    const user = Array.from(users.values()).find(user => user.email === email);
+    // Find user by email
+    const user = await User.findByEmail(email);
 
     if (!user) {
       return res.status(401).json({
@@ -97,7 +96,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Check password
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    const isValidPassword = await user.verifyPassword(password);
 
     if (!isValidPassword) {
       return res.status(401).json({
@@ -116,11 +115,7 @@ router.post('/login', async (req, res) => {
       success: true,
       message: 'Login successful',
       token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email
-      }
+      user: user.toJSON()
     });
 
   } catch (error) {
@@ -132,9 +127,9 @@ router.post('/login', async (req, res) => {
 });
 
 // Get current user profile
-router.get('/profile', authenticateToken, (req, res) => {
+router.get('/profile', authenticateToken, async (req, res) => {
   try {
-    const user = users.get(req.user.userId);
+    const user = await User.findById(req.user.userId);
 
     if (!user) {
       return res.status(404).json({
@@ -144,18 +139,107 @@ router.get('/profile', authenticateToken, (req, res) => {
 
     res.json({
       success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        createdAt: user.createdAt
-      }
+      user: user.toJSON()
     });
 
   } catch (error) {
     console.error('Profile error:', error.message);
     res.status(500).json({
       error: 'Failed to get user profile'
+    });
+  }
+});
+
+// Update user profile
+router.put('/profile', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
+
+    const { username, email, first_name, last_name, profile_picture_url } = req.body;
+    const updateData = {};
+
+    if (username) updateData.username = username;
+    if (email) updateData.email = email;
+    if (first_name) updateData.first_name = first_name;
+    if (last_name) updateData.last_name = last_name;
+    if (profile_picture_url) updateData.profile_picture_url = profile_picture_url;
+
+    const updatedUser = await user.update(updateData);
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: updatedUser.toJSON()
+    });
+
+  } catch (error) {
+    console.error('Profile update error:', error.message);
+    
+    // Handle specific database errors
+    if (error.code === '23505') { // PostgreSQL unique violation
+      return res.status(400).json({
+        error: 'Username or email already exists'
+      });
+    }
+    
+    res.status(500).json({
+      error: 'Failed to update profile'
+    });
+  }
+});
+
+// Change password
+router.put('/change-password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        error: 'Current password and new password are required'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        error: 'New password must be at least 6 characters'
+      });
+    }
+
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
+
+    // Verify current password
+    const isValidPassword = await user.verifyPassword(currentPassword);
+
+    if (!isValidPassword) {
+      return res.status(401).json({
+        error: 'Current password is incorrect'
+      });
+    }
+
+    // Change password
+    await user.changePassword(newPassword);
+
+    res.json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+
+  } catch (error) {
+    console.error('Password change error:', error.message);
+    res.status(500).json({
+      error: 'Failed to change password'
     });
   }
 });
