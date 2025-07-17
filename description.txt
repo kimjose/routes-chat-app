@@ -1,0 +1,8 @@
+create a landing page for an application that connects drivers with other people sharing the same route.
+The driver posts a trip and the route to be used. Other interested parties will see the trip and request to join.
+The driver who posted the trip can accept or reject the request to join.
+When the request is accepted the app links the driver with the client.
+This app can be useful for users commuting to work using their personal cars. With this they can ride along and still get to work 
+at a cost that is lower.
+This also helps the driver matters cost as those riding along will be paying some amount.
+As result it minimizes traffic and air pollution.
