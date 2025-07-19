@@ -1,5 +1,6 @@
 const { query } = require('../config/database');
 const { initializeRolesTables } = require('./roles-init');
+const { initializeRoutesTables } = require('./routes-init');
 
 const createUsersTable = async () => {
   const createTableQuery = `
@@ -91,6 +92,7 @@ const initializeAllTables = async () => {
   try {
     await initializeUsersTable();
     await initializeRolesTables();
+    await initializeRoutesTables();
     console.log('All database tables initialization completed');
   } catch (error) {
     console.error('Error initializing database tables:', error);

@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ChatPage from './pages/ChatPage';
 import MapPage from './pages/MapPage';
+import Dashboard from './components/Dashboard';
 import './App.css';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
               <Route path="/chat" element={<ChatPage />} />
               <Route path="/chat/:roomId" element={<ChatPage />} />
               <Route path="/map" element={<MapPage />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>

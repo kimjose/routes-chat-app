@@ -15,6 +15,7 @@ function HomePage() {
           {isAuthenticated ? (
             <>
               <li><span className="nav-link">Welcome, {user?.username}!</span></li>
+              <li><Link to="/dashboard" className="nav-link">🚗 Dashboard</Link></li>
               <li><Link to="/map" className="nav-link">🗺️ Routes</Link></li>
               <li><Link to="/chat" className="nav-link">💬 Chat</Link></li>
               <li><button onClick={logout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>Logout</button></li>

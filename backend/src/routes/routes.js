@@ -1,5 +1,11 @@
 const express = require('express');
 const axios = require('axios');
+const authRoutes = require('./auth');
+const rolesRoutes = require('./roles');
+const usersRoutes = require('./users');
+const routesApiRoutes = require('./routes-api');
+const tripsRoutes = require('./trips');
+const ratingsRoutes = require('./ratings');
 const router = express.Router();
 
 // Get directions between two points
@@ -197,6 +203,14 @@ router.post('/nearby', async (req, res) => {
     });
   }
 });
+
+// Mount sub-routes
+router.use('/auth', authRoutes);
+router.use('/roles', rolesRoutes);
+router.use('/users', usersRoutes);
+router.use('/routes', routesApiRoutes);
+router.use('/trips', tripsRoutes);
+router.use('/ratings', ratingsRoutes);
 
 module.exports = router;
 
